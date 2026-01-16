@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Forge3D | Models</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+  <nav class="bg-white/80 backdrop-blur border-b border-slate-200 sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 grid place-items-center text-white font-black">
+          F3D
+        </div>
+        <div class="text-lg font-extrabold tracking-tight">Forge3D</div>
+      </a>
+
+      <div class="flex items-center gap-2">
+        <a href="index.html" class="px-3 py-2 rounded-lg text-sm font-semibold hover:bg-slate-100">Dashboard</a>
+        <a href="shop.html" class="px-3 py-2 rounded-lg text-sm font-semibold bg-slate-900 text-white">Models</a>
+        <button id="cartBtn" class="px-3 py-2 rounded-lg text-sm font-extrabold bg-blue-600 text-white hover:bg-blue-700">
+          Cart (<span id="cartCount">0</span>)
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-4 py-10">
+    <div class="flex flex-col md:flex-row md:items-end justify-between gap-4">
+      <div>
+        <h1 class="text-3xl md:text-4xl font-black tracking-tight">Model Library</h1>
+        <p class="text-slate-600 mt-2">Starter storefront. Later: connect to real inventory + checkout.</p>
+      </div>
+
+      <div class="flex flex-col sm:flex-row gap-3">
+        <input id="q" class="px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200"
+          placeholder="Search models (e.g., dragon, stand, mini)" />
+        <select id="cat" class="px-4 py-3 rounded-2xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-200">
+          <option value="all">All categories</option>
+          <option value="minis">Tabletop Minis</option>
+          <option value="decor">Home Decor</option>
+          <option value="parts">Mechanical Parts</option>
+        </select>
+      </div>
+    </div>
+
+    <section class="mt-8 grid sm:grid-cols-2 lg:grid-cols-3 gap-5" id="grid"></section>
+
+    <div class="mt-10 rounded-3xl bg-white border border-slate-200 p-6">
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <div class="text-lg font-black">Want custom work?</div>
+          <div class="text-slate-600 text-sm mt-1">Add a “Request Quote” form later. For now, use the Dashboard Notes + Jobs.</div>
+        </div>
+        <a href="index.html#files" class="px-5 py-3 rounded-xl bg-slate-900 text-white font-extrabold hover:bg-slate-800">
+          Go to Command Center
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Drawer -->
+  <div id="drawer" class="fixed inset-0 bg-black/40 hidden">
+    <div class="absolute right-0 top-0 h-full w-full sm:w-[420px] bg-white shadow-2xl">
+      <div class="p-5 border-b border-slate-200 flex items-center justify-between">
+        <div class="font-black text-lg">Cart</div>
+        <button id="close" class="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 font-extrabold">Close</button>
+      </div>
+      <div class="p-5" id="cartList"></div>
+      <div class="p-5 border-t border-slate-200">
+        <button class="w-full px-4 py-3 rounded-xl bg-blue-600 text-white font-extrabold hover:bg-blue-700"
+          onclick="alert('Stub: connect Stripe later.')">
+          Checkout (stub)
+        </button>
+        <div class="text-xs text-slate-500 mt-2">Static demo. Add payments when ready.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const models = [
+      { id: 1, name: "Dragon Mini v2", cat: "minis", price: 14.99, time: "2h", tag: "Detail", desc: "High-detail resin-ready mini." },
+      { id: 2, name: "Phone Stand", cat: "decor", price: 9.99, time: "1h", tag: "Fast", desc: "Clean desk stand, PLA-friendly." },
+      { id: 3, name: "Gearbox Spacer", cat: "parts", price: 6.50, time: "45m", tag: "Functional", desc: "PETG part with strength bias." },
+      { id: 4, name: "Skull Terrain Pack", cat: "minis", price: 19.00, time: "3h", tag: "Bundle", desc: "Tabletop terrain set." },
+      { id: 5, name: "Vase Wave", cat: "decor", price: 12.00, time: "2h", tag: "Style", desc: "Decor print with smooth curves." },
+      { id: 6, name: "Mount Bracket", cat: "parts", price: 8.25, time: "1h 20m", tag: "Fit", desc: "Bracket, tune dims to spec." },
+    ];
+
+    const cart = [];
+
+    const $ = (id) => document.getElementById(id);
+
+    function money(n){ return "£" + n.toFixed(2); }
+
+    function render(){
+      const q = $("q").value.trim().toLowerCase();
+      const cat = $("cat").value;
+
+      const filtered = models.filter(m => {
+        const matchesQ = !q || (m.name.toLowerCase().includes(q) || m.desc.toLowerCase().includes(q));
+        const matchesC = (cat === "all") || (m.cat === cat);
+        return matchesQ && matchesC;
+      });
+
+      $("grid").innerHTML = filtered.map(m => `
+        <article class="rounded-3xl bg-white border border-slate-200 overflow-hidden hover:shadow-sm transition">
+          <div class="h-36 bg-gradient-to-br from-slate-900 to-blue-700"></div>
+          <div class="p-5">
+            <div class="flex items-start justify-between gap-3">
+              <div class="font-black text-lg">${escapeHtml(m.name)}</div>
+              <span class="text-xs font-bold px-2 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-700">
+                ${escapeHtml(m.tag)}
+              </span>
+            </div>
+            <div class="text-sm text-slate-600 mt-2">${escapeHtml(m.desc)}</div>
+
+            <div class="mt-4 flex items-center justify-between text-sm">
+              <div class="text-slate-500">Est. print</div>
+              <div class="font-bold">${escapeHtml(m.time)}</div>
+            </div>
+
+            <div class="mt-4 flex items-center justify-between">
+              <div class="text-xl font-black">${money(m.price)}</div>
+              <button class="px-4 py-2 rounded-xl bg-blue-600 text-white font-extrabold hover:bg-blue-700"
+                onclick="addToCart(${m.id})">
+                Add
+              </button>
+            </div>
+          </div>
+        </article>
+      `).join("");
+
+      $("cartCount").textContent = cart.length;
+      renderCart();
+    }
+
+    function addToCart(id){
+      const m = models.find(x => x.id === id);
+      if(!m) return;
+      cart.push(m);
+      $("cartCount").textContent = cart.length;
+      renderCart();
+      openDrawer();
+    }
+
+    function renderCart(){
+      if(cart.length === 0){
+        $("cartList").innerHTML = `<div class="text-slate-500">Cart is empty.</div>`;
+        return;
+      }
+      const total = cart.reduce((s,i)=>s+i.price,0);
+      $("cartList").innerHTML = `
+        <div class="space-y-3">
+          ${cart.map((m, idx)=>`
+            <div class="flex items-start justify-between gap-3 border border-slate-200 rounded-2xl p-4">
+              <div>
+                <div class="font-extrabold">${escapeHtml(m.name)}</div>
+                <div class="text-sm text-slate-600">${money(m.price)} • ${escapeHtml(m.time)}</div>
+              </div>
+              <button class="px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 font-extrabold"
+                onclick="removeFromCart(${idx})">Remove</button>
+            </div>
+          `).join("")}
+          <div class="flex items-center justify-between pt-2">
+            <div class="text-slate-500 font-semibold">Total</div>
+            <div class="text-xl font-black">${money(total)}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function removeFromCart(i){
+      cart.splice(i, 1);
+      $("cartCount").textContent = cart.length;
+      renderCart();
+    }
+
+    function openDrawer(){ $("drawer").classList.remove("hidden"); }
+    function closeDrawer(){ $("drawer").classList.add("hidden"); }
+
+    function escapeHtml(s){
+      return String(s ?? "").replace(/[&<>"']/g, (c)=>({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+      }[c]));
+    }
+
+    $("cartBtn").onclick = openDrawer;
+    $("close").onclick = closeDrawer;
+    $("drawer").addEventListener("click", (e)=>{ if(e.target.id === "drawer") closeDrawer(); });
+
+    $("q").addEventListener("input", render);
+    $("cat").addEventListener("change", render);
+
+    render();
+  </script>
+</body>
+</html>
